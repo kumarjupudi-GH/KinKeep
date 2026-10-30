@@ -1,0 +1,1 @@
+{ "name": "kinkeep-email-codes", "version": "1.0.0", "private": true, "main": "otp-server.js", "scripts": { "start": "node otp-server.js" }, "dependencies": { "nodemailer": "^6.9.0" } }
