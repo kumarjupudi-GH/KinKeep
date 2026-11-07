@@ -1,0 +1,5 @@
+/* KinKeep Desktop additions */
+.rk { font: 600 18px/1.5 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; background: var(--p-yellow, #fff7d6); border: 2px dashed #e0b84a; border-radius: 10px; padding: 14px; text-align: center; word-break: break-all; user-select: all; }
+.ro-note { background: var(--p-blue, #e8f1fb); border-radius: 8px; padding: 8px 12px; margin: 8px 0 12px; font-size: 14px; }
+body.ro [data-act="edit"], body.ro [data-act="del"] { display: none !important; }
+details > summary { cursor: pointer; }
