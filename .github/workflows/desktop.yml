@@ -1,0 +1,25 @@
+name: KinKeep Desktop build
+on:
+  push: { paths: ["kinkeep-desktop/**", ".github/workflows/desktop.yml"] }
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix: { os: [windows-latest, macos-latest] }
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { working-directory: kinkeep-desktop } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m playwright install chromium
+      - name: Tests (functional, security, data integrity, parity, UI)
+        run: python -m pytest -q
+      - name: Build app
+        run: python packaging/build.py --skip-tests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KinKeep-${{ matrix.os }}
+          path: kinkeep-desktop/dist/*.zip

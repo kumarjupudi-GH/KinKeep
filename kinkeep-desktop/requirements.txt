@@ -1,0 +1,5 @@
+# runtime
+cryptography>=44.0      # AES-256-GCM, Argon2id (added in 44), HKDF, scrypt
+openpyxl>=3.1           # reads and writes the .xlsx modules
+pywebview>=5.3          # native window (WebView2 on Windows, WKWebView on macOS)
+keyring>=25.0           # optional: OS credential store (Windows Credential Manager / macOS Keychain)

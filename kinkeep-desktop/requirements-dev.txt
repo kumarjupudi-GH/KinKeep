@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=8
+playwright>=1.45        # UI end-to-end tests (then: playwright install chromium)
+pyinstaller>=6.6
+pillow>=10              # icon conversion in packaging/build.py
+msoffcrypto-tool>=5.4   # optional second, independent check that the .xlsx password encryption is standard
