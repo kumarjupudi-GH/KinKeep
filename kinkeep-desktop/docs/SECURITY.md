@@ -26,3 +26,7 @@ You asked for a spreadsheet that opens in ordinary software if KinKeep disappear
 * **Removing a person** stops future access, but cannot unsee what they already viewed or copied.
 * **Not independently audited.** The Office-format encryption is a from-scratch implementation checked against LibreOffice; have the code reviewed before storing real records. Packaged builds are unsigned unless you sign them.
 * Roles for Teen/Viewer/Emergency Contact are enforced by the engine, but the family list is data entered by the Owner: review it.
+
+
+## Voice entry
+KinKeep contains no speech recognition and sends no audio anywhere. The mic buttons hand over to the operating system's own dictation (Windows voice typing, Mac Dictation). Those are operating-system features with their own privacy settings; Windows voice typing sends audio to Microsoft, and Mac Dictation may process audio on the device or at Apple depending on your settings. Typing instead of speaking avoids this entirely.

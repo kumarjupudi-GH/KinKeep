@@ -90,6 +90,12 @@ sub("<p class=\"small muted\" style=\"margin-top:8px\">Roles are a design previe
     "<p class=\"small muted\" style=\"margin-top:8px\">Roles are enforced. To give someone a sign-in, change a role or pause access, open <button class=\"btn sm\" type=\"button\" data-act=\"fam-open\">Family and roles</button>.</p>")
 sub("aStatus: ['Active', 'Invited', 'Needs re-approval']", "aStatus: ['Active', 'Invited', 'Needs re-approval', 'Suspended']") if "aStatus: ['Active', 'Invited', 'Needs re-approval']" in html else None
 
+# ---- mic: the browser's speech recognition sends audio to Google/Apple and fails inside an embedded window.
+#      Use the computer's own dictation instead (nothing is sent by KinKeep).
+sub("var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null,", "var SR = null, rec = null,")
+sub("if (!SR || micAllowed() === false) { st.textContent = DICT; st.style.fontWeight = '600'; inp.focus(); return; }", "if (!SR || micAllowed() === false) { osDictation(st, inp); return; }")
+sub("if (!SR || micAllowed() === false) { micState.textContent = DICT; qEl.focus(); return; }", "if (!SR || micAllowed() === false) { osDictation(micState, qEl); return; }")
+
 # ---- page shell: no service worker or web manifest, desktop CSS, embed the three pictures, strict CSP
 css = (ROOT / "ui_src" / "desktop.css").read_text("utf-8")
 html = html.replace("</style>", css + "\n</style>", 1)

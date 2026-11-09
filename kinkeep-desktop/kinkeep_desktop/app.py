@@ -91,6 +91,16 @@ class DesktopHost(Host):
         else:
             subprocess.Popen(["xdg-open", path])
 
+    def open_dictation(self) -> bool:
+        """Windows: press Windows key + H for the person (opens Windows voice typing in the focused box).
+        macOS has no safe way to start Dictation from an app, so the screen tells the person to press Fn twice."""
+        if sys.platform != "win32":
+            return False
+        import ctypes
+        k, VK_LWIN, VK_H, UP = ctypes.windll.user32.keybd_event, 0x5B, 0x48, 0x2
+        k(VK_LWIN, 0, 0, 0); k(VK_H, 0, 0, 0); k(VK_H, 0, UP, 0); k(VK_LWIN, 0, UP, 0)
+        return True
+
     def open_url(self, url: str) -> None:
         webbrowser.open(url)  # the bridge has already checked the address against its allow-list
 

@@ -544,3 +544,17 @@
     if (r && r.ok && r.state) { var v = S.view; applyPayload(r); S.view = v; }
     render();
   }
+
+  /* ---- the mic button: use the computer's own dictation, never a cloud speech service inside the page ---- */
+  function dictText(opened) {
+    if (/Mac/i.test(navigator.platform || '')) return 'Voice typing uses your Mac\'s own dictation. Click in the box, press the Fn key twice (or choose Edit, then Start Dictation), speak, then press Enter.';
+    return opened ? 'Windows voice typing should now be open. Speak, then press Enter. If it did not open, click in the box and press the Windows key + H.'
+      : 'Click in the box and press the Windows key + H to start Windows voice typing, speak, then press Enter.';
+  }
+  async function osDictation(el, box) {
+    if (box) box.focus();
+    if (el) { el.textContent = dictText(false); el.style.fontWeight = '600'; }
+    await sleep(150);                                     /* let the box take keyboard focus first */
+    var r = await kk('os_dictation');
+    if (el && r && r.ok && r.opened) el.textContent = dictText(true);
+  }

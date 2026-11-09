@@ -56,6 +56,10 @@ class Host:
     def choose_folder(self) -> str | None:
         return None
 
+    def open_dictation(self) -> bool:
+        """Open the operating system's own voice typing. True only if we actually asked the OS to."""
+        return False
+
 
 def api(fn):
     @functools.wraps(fn)
@@ -638,6 +642,17 @@ class Bridge:
     def open_data_folder(self):
         self.host.open_folder(str(self.dir))
         return {"path": str(self.dir)}
+
+    @api
+    def os_dictation(self):
+        """The mic button: speech is typed by the computer's own dictation (Windows voice typing, Mac dictation),
+        never by a speech service built into KinKeep, so KinKeep itself sends your voice nowhere."""
+        try:
+            opened = bool(self.host.open_dictation())
+        except Exception:
+            log.exception("could not open the system dictation")
+            opened = False
+        return {"opened": opened, "platform": sys.platform}
 
     @api
     def open_url(self, url: str):

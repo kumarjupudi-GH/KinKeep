@@ -149,6 +149,7 @@ Anyone with your master password and that file can read it, so keep both private
 | I did not get the email code | Wait 30 seconds, check the spam folder, then click **Resend code**. You can ask for at most 6 per hour. |
 | "Too many wrong tries" | Wait for the time shown (it starts at 15 seconds) and try again. Check the password and Caps Lock. |
 | I forgot my master password | On the sign-in screen click **Forgot your password?**. You need your three answers, an emailed code and, to keep your data, your recovery key. |
+| The microphone button does not type my words | Click in the box and press **Windows key + H** (Mac: **Fn** twice). Check microphone access in Windows **Settings → Privacy → Microphone**. See Part 13. |
 | A family member says their sign-in is paused | The Owner opens **Family and roles**, clicks the person and chooses **Turn sign-in back on**. |
 | I lost my recovery key | Sign in, open **Storage and security**, and make a new one. The old key stops working. |
 
@@ -159,6 +160,22 @@ Anyone with your master password and that file can read it, so keep both private
 3. Open the **kinkeep-desktop** folder. **Right-click** `start-kinkeep.command`, choose **Open**, then **Open** again in the warning box (needed only the first time).
 4. If macOS says the file cannot be opened because of permissions, open the **Terminal** app, type `chmod +x ` (with a space), drag the file onto the Terminal window, press Return, then try step 3 again.
 5. Wait for the first-time setup, then continue from **Part 5** above. On a Mac the data folder is also **Documents → KinKeep Data**.
+
+## Part 13. Typing with your voice (the microphone buttons)
+
+KinKeep does not listen to you itself. The microphone buttons open **your computer's own voice typing**, and what you say is typed into the box. This keeps KinKeep from sending your voice anywhere.
+
+**On Windows**
+1. Click the **microphone button** (in the "Ask KinKeep" panel, or on a record's quick-add box).
+2. **Windows voice typing** appears (a small box with a microphone). If it does not, click in the box and press the **Windows key + H**.
+3. Speak. Your words appear in the box. Press **Enter** when finished.
+4. If Windows asks to turn on **online speech recognition**, that is a Windows setting (**Settings → Privacy → Speech**). Windows voice typing sends your voice to Microsoft; turn it on only if you are comfortable with that. You can always type instead.
+5. If it says it cannot hear you: **Settings → Privacy → Microphone** and make sure microphone access is **On**, and check the right microphone is chosen in **Settings → System → Sound → Input**.
+
+**On a Mac**
+1. Click in the box, then press the **Fn key twice** (or choose **Edit → Start Dictation**).
+2. The first time, allow dictation if the Mac asks. If nothing happens: **System Settings → Keyboard → Dictation**, switch it **On**.
+3. Speak, then press **Enter**.
 
 ---
 
