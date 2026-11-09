@@ -10,7 +10,7 @@ from kinkeep_desktop.otp import OtpService  # noqa: E402
 from kinkeep_desktop.app import serve_dev  # noqa: E402
 from kinkeep_desktop.bridge import Bridge  # noqa: E402
 
-GROUP = {"assets": "fin", "liab": "fin", "cover": "fin", "docs": "pap", "ids": "pap", "will": "pap", "wish": "fam", "plan": "fam", "drive": "set"}
+GROUP = {"assets": "fin", "liab": "fin", "cover": "fin", "docs": "pap", "ids": "pap", "will": "pap", "wish": "fam", "plan": "fam", "family": "fam", "drive": "set"}
 
 
 @pytest.fixture(scope="module")
@@ -205,3 +205,90 @@ def test_viewer_sees_read_only_screens(app):
     txt = app.pg.inner_text("#main")
     assert "Change my password" in txt and "Recovery key" not in txt and "Backup copies" not in txt and "Family sign-ins" not in txt
     assert app.errors == []
+
+
+# ---------------------------------------------------------------- Family and roles page
+def person(app, name):
+    return app.pg.locator("details.fam-person", has_text=name)
+
+
+def open_person(app, name):
+    d = person(app, name)
+    if d.get_attribute("open") is None:
+        d.locator("summary").first.click()
+    return d
+
+
+def banner(app, text):
+    app.pg.locator("#main [role=status]", has_text=text).wait_for(timeout=6000)
+
+
+def test_family_page_owner_adds_person_changes_role_pauses_and_resumes(app):
+    app.register()
+    app.nav("family")
+    assert "Family and roles" in app.pg.inner_text("#main h1")
+    # what each role can do is shown, with every role as a column
+    head = app.pg.inner_text("table.perm-table thead").lower()
+    for r in ("Owner", "Co-owner", "Adult Family Member", "Teen", "Viewer", "Emergency Contact"):
+        assert r.lower() in head
+    assert "Owner" not in app.pg.locator("#fa-role").inner_text()  # nobody can create a second Owner
+
+    pg = app.pg
+    pg.fill("#fa-name", "Ravi Rao"); pg.select_option("#fa-role", "Adult Family Member")
+    pg.locator("summary", has_text="Give them a sign-in now").click()
+    pg.fill("#fa-l-new", "ravi"); pg.fill("#fa-e-new", "ravi@example.com")
+    pg.click("[data-act=fam-suggest][data-target=fa-p-new]")
+    assert len(pg.input_value("#fa-p-new")) == 14
+    pg.click("[data-act=fam-add]")
+    banner(app, "Added Ravi Rao")
+    d = person(app, "Ravi Rao")
+    assert "Adult Family Member" in d.inner_text() and "Signs in as ravi" in d.inner_text()
+
+    open_person(app, "Ravi Rao")
+    pg.select_option("#main [id^=fe-r-]:visible", "Viewer")
+    pg.locator("[data-act=fam-save]:visible").click()
+    banner(app, "Saved")
+    assert "Viewer" in person(app, "Ravi Rao").locator("summary").inner_text()
+
+    open_person(app, "Ravi Rao")
+    pg.locator("[data-act=fam-pause]:visible").click()
+    banner(app, "Sign-in paused")
+    assert "Suspended" in person(app, "Ravi Rao").locator("summary").inner_text()
+    open_person(app, "Ravi Rao")
+    pg.locator("[data-act=fam-resume]:visible").click()
+    banner(app, "Access is back on")
+    assert "Active" in person(app, "Ravi Rao").locator("summary").inner_text()
+    assert app.errors == []
+
+
+def test_family_page_errors_are_shown_plainly(app):
+    app.register(); app.nav("family")
+    app.pg.fill("#fa-name", "Ravi"); app.pg.click("[data-act=fam-add]"); banner(app, "Added Ravi")
+    app.pg.fill("#fa-name", "ravi"); app.pg.click("[data-act=fam-add]"); banner(app, "already in the list")
+    app.pg.fill("#fa-name", "Sam")
+    app.pg.locator("summary", has_text="Give them a sign-in now").click()
+    app.pg.fill("#fa-l-new", "sam"); app.pg.fill("#fa-e-new", "bad"); app.pg.fill("#fa-p-new", "tiny")
+    app.pg.click("[data-act=fam-add]"); banner(app, "email")
+    assert app.pg.locator("details.fam-person", has_text="Sam").count() == 0
+
+
+def test_paused_member_cannot_sign_in_and_family_page_hidden_from_non_managers(app):
+    app.register(); app.nav("family")
+    pg = app.pg
+    pg.fill("#fa-name", "Ravi"); pg.locator("summary", has_text="Give them a sign-in now").click()
+    pg.fill("#fa-l-new", "ravi"); pg.fill("#fa-e-new", "ravi@example.com"); pg.fill("#fa-p-new", "ravi long password")
+    pg.click("[data-act=fam-add]"); banner(app, "Added Ravi")
+    open_person(app, "Ravi"); pg.locator("[data-act=fam-pause]:visible").click(); banner(app, "paused")
+    pg.wait_for_timeout(900)
+    app.restart(); app.pg.wait_for_selector("#g-user")
+    app.pg.fill("#g-user", "ravi"); app.pg.fill("#g-pass", "ravi long password"); app.pg.click("[data-g=login-go]")
+    msg(app, "paused")
+    app.restart()
+    app.signin("asha"); app.nav("family")
+    open_person(app, "Ravi"); app.pg.locator("[data-act=fam-resume]:visible").click(); banner(app, "back on")
+    app.pg.wait_for_timeout(900)
+    app.restart(); app.signin("ravi", "ravi long password")
+    app.pg.wait_for_timeout(300)
+    assert app.pg.locator("[data-nav=family]").count() == 0
+    app.pg.keyboard.press("Escape")
+    assert "Owner and Co-owner only" not in app.pg.inner_text("#main")  # the page is simply not offered

@@ -430,3 +430,117 @@
     ST = r; if (r.signedIn) { var l = await kk('load_state'); if (l.ok) { finishPayload(l); return; } }
     if (r.account && r.hasVault) gLogin(false); else if (r.hasVault) gLogin(false); else gRegister();
   }
+
+  /* ======================================================================================================
+     Family and roles page (Owner and Co-owner). Every rule is enforced by the Python engine; this page
+     only shows the choices and reports what the engine said.
+     ====================================================================================================== */
+  var FAM = { stale: true, loading: false, data: null, msg: null, busy: false };
+  NAMES.family = 'Family and roles';
+  [GROUPS, GROUPS_ALL].forEach(function (L) { L.forEach(function (g) { if (g.id === 'fam' && g.items.indexOf('family') < 0) g.items.push('family'); }); });
+
+  async function loadFamily() {
+    if (FAM.loading || !V.on || !isManager()) return;
+    FAM.loading = true; FAM.stale = false;
+    var r = await kk('family_overview');
+    FAM.loading = false;
+    if (r.ok) FAM.data = r; else FAM.msg = { ok: false, text: r.error };
+    if (S.view === 'family') render();
+  }
+  function famStatus(st) { return '<span class="chip' + (st === 'Active' ? ' ok' : st === 'Suspended' ? ' crit' : ' warn') + '">' + esc(st || '') + '</span>'; }
+  function famRoleSelect(id, cur, list) {
+    var o = list.slice(); if (cur && o.indexOf(cur) < 0) o.unshift(cur);
+    return '<select id="' + id + '">' + o.map(function (r) { return '<option' + (r === cur ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>';
+  }
+  function famField(id, label, inner, hint) { return '<div class="fld"><label for="' + id + '">' + label + '</label>' + inner + (hint ? '<div class="small muted">' + hint + '</div>' : '') + '</div>'; }
+  function famInput(id, type, val, extra) { return '<input type="' + type + '" id="' + id + '" value="' + esc(val || '') + '" autocomplete="' + (type === 'password' ? 'new-password' : 'off') + '" ' + (extra || '') + '>'; }
+  function famSignInFields(id) {
+    return famField('fa-l-' + id, 'Login name', famInput('fa-l-' + id, 'text', '', 'maxlength="30"'), '3 to 30 letters or numbers, for example <i>ravi</i>') +
+      famField('fa-e-' + id, 'Their email address', famInput('fa-e-' + id, 'email', ''), 'Their sign-in codes are emailed here.') +
+      famField('fa-p-' + id, 'Starting password', famInput('fa-p-' + id, 'password', '') + ' <button class="btn sm" type="button" data-act="fam-suggest" data-target="fa-p-' + id + '">Suggest one</button>', 'At least 10 characters. Tell them in person, not by email or text.');
+  }
+  function famPerson(p, D) {
+    var id = esc(p.id), body, summary;
+    summary = '<b>' + esc(p.name) + '</b> <span class="chip info">' + esc(p.role) + '</span> ' + famStatus(p.status) +
+      ' <span class="small muted">' + (p.login ? 'Signs in as <b>' + esc(p.login) + '</b>' : 'No sign-in yet') + '</span>';
+    if (!p.canManage) {
+      body = '<p class="small muted">' + (p.role === 'Owner' ? 'The Owner is the person who created this vault and cannot be changed here.' : 'Only the Owner can change a Co-owner.') + '</p>';
+    } else {
+      body = '<div class="entry">' + famField('fe-n-' + id, 'Name', famInput('fe-n-' + p.id, 'text', p.name, 'maxlength="80"')) +
+        famField('fe-r-' + id, 'Role', famRoleSelect('fe-r-' + p.id, p.role, D.assignable), 'See "What each role can do" below.') +
+        famField('fe-s-' + id, 'Note: what they can see', famInput('fe-s-' + p.id, 'text', p.scope, 'maxlength="200"')) +
+        '<div class="form-actions"><button class="btn primary" type="button" data-act="fam-save" data-id="' + id + '">Save changes</button></div></div>';
+      if (p.login) {
+        body += '<h3 class="small" style="margin:14px 0 6px">Sign-in</h3><p class="small muted">Login <b>' + esc(p.login) + '</b> &middot; codes go to <b>' + esc(maskEmail(p.email)) + '</b></p>' +
+          '<div class="entry">' + famField('fa-rp-' + id, 'Set a new password for them', famInput('fa-rp-' + p.id, 'password', '') + ' <button class="btn sm" type="button" data-act="fam-suggest" data-target="fa-rp-' + id + '">Suggest one</button>', 'Use this if they forgot their password. At least 10 characters.') +
+          '<div class="form-actions"><button class="btn" type="button" data-act="fam-reset" data-id="' + id + '">Set new password</button> ' +
+          (p.status === 'Suspended' ? '<button class="btn" type="button" data-act="fam-resume" data-id="' + id + '">Turn sign-in back on</button>' : '<button class="btn" type="button" data-act="fam-pause" data-id="' + id + '">Pause sign-in</button>') +
+          ' <button class="btn" type="button" data-act="st-mem-del-fam" data-id="' + id + '">Remove sign-in</button></div></div>';
+      } else {
+        body += '<details style="margin-top:12px"><summary class="small">Give ' + esc(p.name) + ' a sign-in</summary><div class="entry" style="margin-top:8px">' + famSignInFields(id) +
+          '<div class="form-actions"><button class="btn primary" type="button" data-act="fam-signin" data-id="' + id + '">Create sign-in</button></div></div></details>';
+        if (p.status === 'Suspended') body += '<div class="form-actions" style="margin-top:10px"><button class="btn" type="button" data-act="fam-resume" data-id="' + id + '">Approve again</button></div>';
+      }
+      body += '<div class="form-actions" style="margin-top:14px"><button class="btn danger" type="button" data-act="fam-del" data-id="' + id + '">Remove ' + esc(p.name) + ' from the family list</button></div>';
+    }
+    return '<li style="display:block"><details class="fam-person"><summary>' + summary + '</summary><div style="margin-top:10px">' + body + '</div></details></li>';
+  }
+  function famMatrix(D) {
+    var views = Object.keys(D.matrix[0].views), roles = D.matrix;
+    function cell(v) { return v === 'rw' ? '<td class="perm-full">Change</td>' : v === 'r' ? '<td class="perm-view">View</td>' : '<td class="perm-none">&ndash;</td>'; }
+    var head = '<tr><th scope="col">Screen</th>' + roles.map(function (m) { return '<th scope="col">' + esc(m.role) + '</th>'; }).join('') + '</tr>';
+    var rows = views.map(function (v) { return '<tr><th scope="row">' + esc(D.labels[v] || v) + '</th>' + roles.map(function (m) { return cell(m.views[v]); }).join('') + '</tr>'; }).join('');
+    rows += '<tr><th scope="row">' + esc(D.labels.family) + '</th>' + roles.map(function (m) { return cell(m.family); }).join('') + '</tr>';
+    return '<ul class="plain small" style="margin-bottom:12px">' + roles.map(function (m) { return '<li><b>' + esc(m.role) + ':</b> ' + esc(m.info) + '</li>'; }).join('') + '</ul>' +
+      '<div class="tablewrap"><table class="perm-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' +
+      '<p class="small muted" style="margin-top:8px">Teens also see only their own documents and identity records. Adult Family Members see will and wish records without the private notes. The Emergency Contact role works only while the Owner allows emergency access.</p>';
+  }
+  function vFamily() {
+    var out = head('Family and roles', 'Decide who in your family can open KinKeep and what each person can see or change.');
+    if (!V.on) return out + panel('Sign in first', '<p>Family and roles work in your own vault. Sign in or create your account to use them. The sample data has no real sign-ins.</p><div class="form-actions" style="margin-top:12px"><button class="btn primary" type="button" data-act="st-signout">Go to sign in</button></div>');
+    if (!isManager()) return out + panel('Owner and Co-owner only', '<p>Only the Owner or a Co-owner can manage family members. Ask them if you need a change.</p>');
+    if (FAM.stale && !FAM.loading) loadFamily();
+    var D = FAM.data;
+    if (FAM.msg) out += '<div class="' + (FAM.msg.ok ? 'ro-note' : 'warn-note') + '" role="status" style="' + (FAM.msg.ok ? '' : 'background:var(--crit-soft);color:var(--crit);border-radius:8px;padding:8px 12px;margin:8px 0 12px;font-size:14px') + '">' + esc(FAM.msg.text) + '</div>';
+    if (!D) return out + panel('Loading', '<p class="muted">Loading your family list&hellip;</p>');
+    var pending = D.people.filter(function (p) { return p.status === 'Needs re-approval'; });
+    if (pending.length) out += panel('Waiting for your approval', '<p class="small muted" style="margin-bottom:8px">These people came back from a backup. They keep their role, but nobody gets access until you approve them again and give them a sign-in.</p><p>' + pending.map(function (p) { return '<b>' + esc(p.name) + '</b> (' + esc(p.role) + ')'; }).join(', ') + '</p>', '<span class="chip warn">' + pending.length + ' to review</span>');
+    out += panel('Family members', '<p class="small muted" style="margin-bottom:10px">Open a person to change their role, give them a sign-in, set a new password, pause their access or remove them. A sign-in gives a person their own login and password. They also need the six-digit code that is emailed to them.</p><ul class="files">' + D.people.map(function (p) { return famPerson(p, D); }).join('') + '</ul>', '<span class="chip">' + D.people.length + ' people</span>');
+    out += panel('Add a family member', '<div class="entry">' + famField('fa-name', 'Name', famInput('fa-name', 'text', '', 'maxlength="80"')) +
+      famField('fa-role', 'Role', famRoleSelect('fa-role', 'Adult Family Member', D.assignable), 'Not sure? Read "What each role can do" below. You can change it later.') +
+      famField('fa-scope', 'Note: what they can see (optional)', famInput('fa-scope', 'text', '', 'maxlength="200"')) +
+      '<details><summary class="small">Give them a sign-in now (optional)</summary><div class="entry" style="margin-top:8px">' + famSignInFields('new') + '</div></details>' +
+      '<div class="form-actions" style="margin-top:12px"><button class="btn primary" type="button" data-act="fam-add">Add to family</button></div></div>');
+    out += panel('What each role can do', famMatrix(D));
+    if (D.emergency.canChange) {
+      out += panel('Emergency access', '<p class="small muted" style="margin-bottom:10px">People with the Emergency Contact role can sign in only while you allow it, and then see the emergency essentials only. Allow it when it is needed and switch it off afterwards.</p><p style="margin-bottom:10px"><b>' + (D.emergency.active ? 'Allowed until ' + esc(new Date(D.emergency.until).toLocaleString()) : 'Not allowed right now') + '</b></p><div class="form-actions"><select id="fa-em-h" aria-label="How long"><option value="2">for 2 hours</option><option value="24" selected>for 24 hours</option><option value="72">for 3 days</option><option value="168">for 7 days</option></select> <button class="btn primary" type="button" data-act="fam-em-on">Allow emergency access</button> <button class="btn" type="button" data-act="fam-em-off">Switch it off</button></div>');
+    }
+    return out;
+  }
+  function famSuggest() {
+    var a = 'abcdefghjkmnpqrstuvwxyzACDEFGHJKLMNPQRTUVWXYZ2346789', b = new Uint32Array(14), o = '';
+    window.crypto.getRandomValues(b); for (var i = 0; i < b.length; i++) o += a.charAt(b[i] % a.length); return o;
+  }
+  async function familyAct(act, b) {
+    if (act === 'fam-open') { go('family'); return; }
+    if (act === 'fam-suggest') { var t = $('#' + b.dataset.target); if (t) { t.type = 'text'; t.value = famSuggest(); } return; }
+    if (!V.on || !isManager() || FAM.busy) return;
+    var id = b.dataset.id, r, ok = '';
+    FAM.busy = true;
+    try {
+      if (act === 'fam-add') { r = await kk('family_add', val('fa-name'), val('fa-role'), val('fa-scope'), val('fa-l-new'), val('fa-e-new'), ($('#fa-p-new') || {}).value || ''); ok = 'Added ' + val('fa-name') + '.'; }
+      else if (act === 'fam-save') { r = await kk('family_update', id, val('fe-r-' + id), val('fe-s-' + id), val('fe-n-' + id)); ok = 'Saved.'; }
+      else if (act === 'fam-signin') { r = await kk('member_add', id, val('fa-l-' + id), val('fa-e-' + id), ($('#fa-p-' + id) || {}).value || ''); ok = 'Sign-in created. Give them the login name and password in person.'; }
+      else if (act === 'fam-reset') { r = await kk('member_reset_password', id, ($('#fa-rp-' + id) || {}).value || ''); ok = 'New password set. Tell them in person.'; }
+      else if (act === 'fam-pause') { r = await kk('family_pause', id, true); ok = 'Sign-in paused. They cannot open KinKeep until you turn it back on.'; }
+      else if (act === 'fam-resume') { r = await kk('family_pause', id, false); ok = 'Access is back on.'; }
+      else if (act === 'st-mem-del-fam') { r = await kk('member_remove', id); ok = 'Sign-in removed. They stay in the family list.'; }
+      else if (act === 'fam-del') { if (!window.confirm('Remove this person from the family list? Their sign-in is deleted too.')) { FAM.busy = false; return; } r = await kk('family_delete', id); ok = 'Removed.'; }
+      else if (act === 'fam-em-on') { r = await kk('emergency_grant', +(($('#fa-em-h') || {}).value || 24)); ok = 'Emergency access is allowed.'; }
+      else if (act === 'fam-em-off') { r = await kk('emergency_revoke'); ok = 'Emergency access is switched off.'; }
+      else { FAM.busy = false; return; }
+    } catch (e) { r = { ok: false, error: 'Something went wrong. Nothing was changed.' }; }
+    FAM.busy = false; FAM.msg = { ok: !!(r && r.ok), text: r && r.ok ? ok : (r && r.error) || 'That did not work.' }; FAM.stale = true;
+    if (r && r.ok && r.state) { var v = S.view; applyPayload(r); S.view = v; }
+    render();
+  }

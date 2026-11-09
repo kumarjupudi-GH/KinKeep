@@ -21,7 +21,7 @@ T = {
     # Original roles were Owner, Adult, Teen, Viewer, Emergency only. Co-owner is new; the others are kept
     # (renamed to the desktop wording). LEGACY_ROLES maps old stored values onto the new names.
     "aRole": ["Owner", "Co-owner", "Adult Family Member", "Teen", "Viewer", "Emergency Contact"],
-    "aStatus": ["Active", "Invited", "Needs re-approval"],
+    "aStatus": ["Active", "Invited", "Needs re-approval", "Suspended"],
     "idType": ["Passport", "Driver license", "State ID", "Green card / permanent resident", "Visa", "Work permit (EAD)",
                "OCI card", "Aadhaar", "PAN card", "Voter ID", "Social Security card", "Birth certificate",
                "Health insurance card", "School or student ID", "Other"],

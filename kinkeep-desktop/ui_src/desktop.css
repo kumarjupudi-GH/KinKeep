@@ -3,3 +3,11 @@
 .ro-note { background: var(--p-blue, #e8f1fb); border-radius: 8px; padding: 8px 12px; margin: 8px 0 12px; font-size: 14px; }
 body.ro [data-act="edit"], body.ro [data-act="del"] { display: none !important; }
 details > summary { cursor: pointer; }
+
+.perm-table th, .perm-table td { text-align: center; padding: 6px 8px; font-size: 12.5px; }
+.perm-table th[scope="row"] { text-align: left; }
+.perm-full { background: var(--accent-soft); color: var(--ok); font-weight: 600; }
+.perm-view { background: var(--p-blue, #e8f1fb); }
+.perm-none { color: var(--muted); }
+.fam-person > summary { padding: 4px 0; }
+.fld > .btn.sm { display: inline-block; width: auto; margin-top: 6px; }

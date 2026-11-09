@@ -81,6 +81,15 @@ if "if (t.dataset && t.dataset.note) { S.plan[t.dataset.note] = t.value; save();
     sub("if (t.dataset && t.dataset.note) { S.plan[t.dataset.note] = t.value; save(); }", "if (t.dataset && t.dataset.note && viewPerm('plan') === 'rw') { S.plan[t.dataset.note] = t.value; save(); }")
 sub("aStatus: ['Active', 'Invited']", "aStatus: ['Active', 'Invited', 'Needs re-approval']") if "aStatus: ['Active', 'Invited']" in html else None
 
+# ---- Family and roles page: register the screen, route its buttons, retire the "design preview" note
+sub("wish: vWish, drive: vDrive,", "wish: vWish, drive: vDrive, family: vFamily,")
+sub("else if (act.indexOf('drive-') === 0 || act.indexOf('st-') === 0) storageAct(act, b);",
+    "else if (act === 'st-mem-del-fam' || act.indexOf('fam-') === 0) familyAct(act, b);\n    else if (act.indexOf('drive-') === 0 || act.indexOf('st-') === 0) storageAct(act, b);")
+sub("if (v === 'drive') SEC.stale = true;", "if (v === 'drive') SEC.stale = true; if (v === 'family') FAM.stale = true;")
+sub("<p class=\"small muted\" style=\"margin-top:8px\">Roles are a design preview. Real invitations and enforced permissions need the sign-in backend.</p>",
+    "<p class=\"small muted\" style=\"margin-top:8px\">Roles are enforced. To give someone a sign-in, change a role or pause access, open <button class=\"btn sm\" type=\"button\" data-act=\"fam-open\">Family and roles</button>.</p>")
+sub("aStatus: ['Active', 'Invited', 'Needs re-approval']", "aStatus: ['Active', 'Invited', 'Needs re-approval', 'Suspended']") if "aStatus: ['Active', 'Invited', 'Needs re-approval']" in html else None
+
 # ---- page shell: no service worker or web manifest, desktop CSS, embed the three pictures, strict CSP
 css = (ROOT / "ui_src" / "desktop.css").read_text("utf-8")
 html = html.replace("</style>", css + "\n</style>", 1)

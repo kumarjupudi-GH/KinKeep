@@ -425,6 +425,80 @@ class Store:
                 r["status"] = "Invited"
         self._commit(s)
 
+    # -- family and roles page ---------------------------------------------------------------
+    def _manager(self, s: Session) -> None:
+        if s.role not in (access.OWNER, access.COOWNER):
+            raise access.Denied("Only the Owner or a Co-owner can manage family members.")
+
+    def _family_row(self, s: Session, access_id: str) -> dict:
+        self._manager(s)
+        row = next((r for r in s.data["access"] if r["id"] == access_id), None)
+        if row is None:
+            raise StoreError("That person is no longer in the list.")
+        if row["role"] == access.OWNER:
+            raise access.Denied("The Owner cannot be changed here.")
+        if s.role == access.COOWNER and row["role"] in access.CO_OWNER_FORBIDDEN_ROLES:
+            raise access.Denied("Only the Owner can manage a Co-owner.")
+        return row
+
+    @staticmethod
+    def _clean_person(name: str, scope: str) -> tuple[str, str]:
+        name, scope = " ".join((name or "").split()), " ".join((scope or "").split())
+        if not 1 <= len(name) <= 80:
+            raise StoreError("Enter the person's name (up to 80 characters).")
+        if len(scope) > 200:
+            raise StoreError("Keep the note about what they can see under 200 characters.")
+        return name, scope
+
+    def family_add(self, s: Session, name: str, role: str, scope: str = "") -> dict:
+        self._manager(s)
+        name, scope = self._clean_person(name, scope)
+        if role not in access.assignable_roles(s.role):
+            raise access.Denied("You cannot give that role." if role in schema.T["aRole"] else "Choose a role from the list.")
+        if any(r["name"].strip().lower() == name.lower() for r in s.data["access"]):
+            raise StoreError("Someone with that name is already in the list. Add a last name or initial to tell them apart.")
+        row = {"id": schema.nid(), "name": name, "role": role, "scope": scope or access.ROLE_INFO[role].split(". ")[0], "status": "Invited"}
+        s.data["access"].append(row)
+        self._commit(s)
+        return row
+
+    def family_update(self, s: Session, access_id: str, role: str, scope: str, name: str | None = None) -> None:
+        row = self._family_row(s, access_id)
+        if role != row["role"] and role not in access.assignable_roles(s.role):
+            raise access.Denied("You cannot give that role.")
+        name, scope = self._clean_person(row["name"] if name is None else name, scope)
+        if any(r["id"] != access_id and r["name"].strip().lower() == name.lower() for r in s.data["access"]):
+            raise StoreError("Someone with that name is already in the list.")
+        row.update(name=name, role=role, scope=scope)
+        self.sync_member_roles(s)  # their login follows the new role straight away
+        self._commit(s)
+
+    def family_set_paused(self, s: Session, access_id: str, paused: bool) -> str:
+        """Pause blocks the person's sign-in without deleting it; resume (or approve) restores it."""
+        row = self._family_row(s, access_id)
+        has_login = any(m["access_id"] == access_id for m in s.members)
+        row["status"] = "Suspended" if paused else ("Active" if has_login else "Invited")
+        self._commit(s)
+        return row["status"]
+
+    def family_delete(self, s: Session, access_id: str) -> None:
+        row = self._family_row(s, access_id)
+        s.slots = [x for x in s.slots if x["id"] != f"m-{access_id}"]
+        s.members = [m for m in s.members if m["access_id"] != access_id]
+        s.data["access"] = [r for r in s.data["access"] if r is not row]
+        self._commit(s)
+
+    def reset_member_password(self, s: Session, access_id: str, new_password: str) -> None:
+        self._family_row(s, access_id)
+        m = next((m for m in s.members if m["access_id"] == access_id), None)
+        if m is None:
+            raise StoreError("This person does not have a sign-in yet.")
+        if len(new_password or "") < 10:
+            raise StoreError("The password needs at least 10 characters.")
+        s.slots = [x for x in s.slots if x["id"] != m["slot_id"]] + [
+            crypto.make_password_slot(new_password, s.dek, m["slot_id"], m.get("name", ""), "member")]
+        self._commit(s)
+
     def sync_member_roles(self, s: Session) -> None:
         """Keep each login's role equal to the role in the Family access list; drop logins whose row was deleted."""
         by = {r["id"]: r for r in s.data["access"]}

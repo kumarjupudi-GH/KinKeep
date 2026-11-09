@@ -3,7 +3,8 @@
 Secure, offline-first, family-owned records for Windows and macOS. Python engine, native window, encrypted vault, and a password-protected spreadsheet you can open without KinKeep.
 
 * Plan and parity record: `docs/MIGRATION_PLAN.md`
-* Install and set up: `docs/INSTALL.md`
+* Beginner install guide (step by step): `docs/INSTALL_STEP_BY_STEP.md`
+* Install and set up (short): `docs/INSTALL.md`
 * Backup and disaster recovery: `docs/RECOVERY.md`
 * Security and trade-offs: `docs/SECURITY.md`
 

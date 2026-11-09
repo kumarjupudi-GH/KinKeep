@@ -53,7 +53,8 @@ Rewriting about 1,900 lines of working screens in a Python GUI toolkit would ris
 3. **Demo mode still exists** (no email configured) but is labelled as *not a real second factor*.
 4. **Google Drive connector panel removed** (it only worked inside claude.ai). Replacement: *Extra encrypted copies* to any folder, such as Google Drive for desktop, OneDrive or a USB drive. The Drive link field on will records is unchanged.
 5. **No Google Fonts request**: the app makes no network calls except the email codes you configure and links you click.
-6. **Family sign-ins are never restored from a backup.** People keep their role and relationship but must be approved again.
+6. **New Family and roles page** (Family & Care): add people with a role, give or remove sign-ins, change roles, set a family member's password, pause and resume access (new status *Suspended*), approve people after a restore, emergency access, and a table of what each role can do. Rules are enforced in `store.py`/`bridge.py`, tested in `tests/test_family_roles.py`. A Co-owner cannot touch Owners or Co-owners; nobody can create a second Owner.
+7. **Family sign-ins are never restored from a backup.** People keep their role and relationship but must be approved again.
 
 ## 6. Not verified in this build environment
 * The Windows `.exe` and macOS `.app` were **not built or launched** here: PyPI was blocked (no pywebview, PyInstaller) and PyInstaller cannot cross-compile. The spec, build script and CI workflow are provided and parse correctly. First run on each OS may need small fixes.

@@ -13,7 +13,11 @@ from . import schema
 
 VIEW_OF = {"assets": "assets", "liabs": "liab", "policies": "cover", "docs": "docs", "ids": "ids", "wills": "will",
            "wishes": "wish", "reminders": "rem", "contacts": "plan", "access": "plan"}
-VIEWS = ["home", "dash", "rem", "emerg", "assets", "liab", "cover", "docs", "ids", "will", "wish", "plan", "drive"]
+VIEWS = ["home", "dash", "rem", "emerg", "assets", "liab", "cover", "docs", "ids", "will", "wish", "plan", "drive", "family"]
+VIEW_LABELS = {"home": "Home", "dash": "Dashboard", "rem": "Reminders", "emerg": "Emergency", "assets": "Assets",
+               "liab": "Liabilities", "cover": "Insurance", "docs": "Documents", "ids": "Identity and Renewals",
+               "will": "Will and Trust", "wish": "Medical and Celebration of Life", "plan": "Continuity",
+               "drive": "Storage and security", "family": "Family and roles"}
 
 OWNER, COOWNER, ADULT, TEEN, VIEWER, EMERGENCY = schema.T["aRole"]
 _ALL_RW = {v: "rw" for v in VIEWS}
@@ -22,7 +26,7 @@ PERMS: dict[str, dict[str, str]] = {
     COOWNER: dict(_ALL_RW),
     # "drive" is the Storage and Security page. Every signed-in family member gets it read-only so they can
     # change their own password and lock the app; owner-only panels are hidden and refused by the engine.
-    ADULT: {**_ALL_RW, "will": "r", "wish": "r", "drive": "r"},
+    ADULT: {**_ALL_RW, "will": "r", "wish": "r", "drive": "r", "family": ""},
     TEEN: {"home": "r", "rem": "r", "emerg": "r", "docs": "r", "ids": "r", "plan": "r", "drive": "r"},
     VIEWER: {"home": "r", "dash": "r", "rem": "r", "emerg": "r", "docs": "r", "ids": "r", "plan": "r", "drive": "r"},
     EMERGENCY: {"emerg": "r", "plan": "r"},
@@ -32,6 +36,29 @@ COLL_READ_OVERRIDES = {TEEN: {"access": ""}, VIEWER: {"access": ""}, EMERGENCY: 
 SEALED = {"wills", "wishes"}  # Adult Family Member sees these without the private notes
 OWNER_ONLY_ACTIONS = {"clear", "reset", "delete_vault", "set_owner_password", "grant_emergency", "remove_owner"}
 CO_OWNER_FORBIDDEN_ROLES = {OWNER, COOWNER}
+
+ROLE_INFO = {
+    OWNER: "The person who created this vault. Can do everything, including backups, email settings, emergency access and managing every other role.",
+    COOWNER: "A trusted partner. Can see and change everything and manage family members, but cannot change the Owner or other Co-owners, and cannot use owner-only actions (clear data, emergency access, email settings).",
+    ADULT: "A grown-up family member. Can see and change nearly everything, but sees will and wish screens read-only without their private notes, and has no access to family management.",
+    TEEN: "A young person. Sees only the overview, reminders, emergency info, their own documents and their own identity records, read-only.",
+    VIEWER: "Read-only overview: dashboard, reminders, emergency info, documents, identity records and the continuity plan.",
+    EMERGENCY: "Only the emergency essentials (emergency checklists, health insurance, contacts and the continuity plan), read-only, and only while the Owner has switched emergency access on.",
+}
+
+
+def assignable_roles(actor_role: str) -> list[str]:
+    """Roles the actor may give to someone else on the Family and roles page. Nobody can create a second Owner."""
+    if actor_role == OWNER:
+        return [COOWNER, ADULT, TEEN, VIEWER, EMERGENCY]
+    if actor_role == COOWNER:
+        return [ADULT, TEEN, VIEWER, EMERGENCY]
+    return []
+
+
+def role_matrix() -> list[dict]:
+    return [{"role": r, "info": ROLE_INFO[r], "views": {v: view_perm(r, v) for v in VIEWS if v != "family"},
+             "family": view_perm(r, "family")} for r in schema.T["aRole"]]
 
 
 class Denied(PermissionError):

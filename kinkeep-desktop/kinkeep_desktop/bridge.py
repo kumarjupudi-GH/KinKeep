@@ -132,8 +132,18 @@ class Bridge:
             out["demo_code"] = r["demo_code"]
         return out
 
+    @staticmethod
+    def _check_paused(s) -> None:
+        if s.slot_id in (storemod.OWNER_SLOT, "recovery"):
+            return
+        m = next((m for m in s.members if m["slot_id"] == s.slot_id), None)
+        row = next((r for r in s.data["access"] if m and r["id"] == m["access_id"]), None)
+        if row is None or row.get("status") in ("Suspended", "Needs re-approval"):
+            raise access.Denied("The Owner has paused this sign-in. Please ask them to turn it back on.")
+
     def _state_payload(self) -> dict:
         s = self._need()
+        self._check_paused(s)
         if s.role == access.EMERGENCY and not access.emergency_active(s.meta):
             raise access.Denied("The Owner has not approved emergency access right now.")
         view = access.filter_state(s.data, s.role, s.name)
@@ -260,6 +270,7 @@ class Bridge:
             self._fail(key)
             raise crypto.WrongPassword(GENERIC_LOGIN_ERR) from None
         self._ok(key)
+        self._check_paused(s)
         if s.role == access.EMERGENCY and not access.emergency_active(s.meta):
             raise access.Denied("The Owner has not approved emergency access right now.")
         acct = self.store.account() or {}
@@ -445,6 +456,58 @@ class Bridge:
         if s.role not in (access.OWNER, access.COOWNER):
             raise access.Denied("Only the Owner or a Co-owner can see logins.")
         return {"members": [{k: m[k] for k in ("access_id", "login", "email", "name", "role")} for m in s.members]}
+
+    # ------------------------------------------------------------------ Family and roles page
+    @api
+    def family_overview(self):
+        s = self._need()
+        if s.role not in (access.OWNER, access.COOWNER):
+            raise access.Denied("Only the Owner or a Co-owner can open Family and roles.")
+        logins = {m["access_id"]: m for m in s.members}
+        people = []
+        for r in s.data["access"]:
+            m = logins.get(r["id"])
+            locked_for_me = r["role"] == access.OWNER or (s.role == access.COOWNER and r["role"] in access.CO_OWNER_FORBIDDEN_ROLES)
+            people.append({"id": r["id"], "name": r["name"], "role": r["role"], "scope": r.get("scope", ""), "status": r.get("status", ""),
+                           "login": m["login"] if m else "", "email": m["email"] if m else "", "canManage": not locked_for_me})
+        until = s.meta.get("emergency_until", "")
+        return {"people": people, "matrix": access.role_matrix(), "labels": access.VIEW_LABELS,
+                "assignable": access.assignable_roles(s.role),
+                "emergency": {"until": until, "active": access.emergency_active(s.meta), "canChange": s.role == access.OWNER}}
+
+    @api
+    def family_add(self, name: str, role: str, scope: str = "", login: str = "", email: str = "", password: str = ""):
+        s = self._need()
+        row = self.store.family_add(s, name, role, scope)
+        if (login or email or password):
+            try:
+                if not EMAIL_RX.match(email or ""):
+                    raise ValueError("Enter the person's email address. Their sign-in codes go there.")
+                self.store.add_member(s, row["id"], login, email, password)
+            except Exception:
+                self.store.family_delete(s, row["id"])  # all or nothing: do not leave a half-created person behind
+                raise
+        return self._state_payload()
+
+    @api
+    def family_update(self, access_id: str, role: str, scope: str = "", name: str | None = None):
+        self.store.family_update(self._need(), access_id, role, scope, name)
+        return self._state_payload()
+
+    @api
+    def family_pause(self, access_id: str, paused: bool):
+        self.store.family_set_paused(self._need(), access_id, bool(paused))
+        return self._state_payload()
+
+    @api
+    def family_delete(self, access_id: str):
+        self.store.family_delete(self._need(), access_id)
+        return self._state_payload()
+
+    @api
+    def member_reset_password(self, access_id: str, password: str):
+        self.store.reset_member_password(self._need(), access_id, password)
+        return {}
 
     @api
     def emergency_grant(self, hours: int):
